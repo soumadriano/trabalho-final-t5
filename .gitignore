@@ -1,0 +1,12 @@
+# Credenciais: NUNCA vão para o GitHub (o modelo é o .env.example)
+.env
+
+# Dados baixados do Drive (centenas de MB) e arquivos compactados
+data/
+*.zip
+*.csv
+
+# Arquivos gerados pelo Python e pelo Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
