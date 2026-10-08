@@ -1,95 +1,155 @@
 # Pipeline ETL — Viagens a Serviço (Portal da Transparência)
 
-Projeto avaliativo do curso **Análise de Dados com Python** (SENAI / LAB365) — Módulo 1, Semana 13.
-Um pipeline de dados em **Python + PostgreSQL** que baixa os dados abertos de *Viagens a Serviço* do Governo Federal, guarda o dado bruto sem alterar nada, limpa e organiza esse dado e responde perguntas de negócio com tabelas e gráficos.
+Projeto do Módulo 1 (Semana 13) do curso **Análise de Dados com Python — SENAI / LAB365**.
+Um pipeline completo em **Python + PostgreSQL** que baixa dados abertos de *Viagens a Serviço* do Governo Federal, preserva o dado bruto, limpa e tipa, agrega e responde perguntas de negócio com tabelas e gráficos.
 
-## O problema que este projeto resolve
+Autor: {{ SEU NOME COMPLETO }}
+Repositório: {{ https://github.com/seu-usuario/seu-repo }}
 
-O Portal da Transparência publica os gastos com viagens a serviço, mas o dado chega **bruto**: quatro arquivos CSV grandes (quase 1,9 milhão de linhas), em texto com acentos em codificação antiga, com vírgula como separador decimal, datas escritas como `17/09/2024`, campos vazios e nomes de coluna com pequenos defeitos.
-Para transformar isso em informação confiável, o projeto constrói o caminho completo: **extrair**, **guardar o original**, **limpar e tipar**, **agregar** e **responder perguntas**, de forma que possa ser executado quantas vezes for preciso sem duplicar nem quebrar nada.
+---
 
-## Técnicas e tecnologias
+## 1. O problema que este projeto resolve
 
-- **Python 3** com `pandas`, `psycopg2`, `requests` e `matplotlib`
-- **PostgreSQL**: `CREATE TABLE` com `PRIMARY KEY`, `FOREIGN KEY`, `NOT NULL`, `CHECK` e `UNIQUE`; `JOIN`, `GROUP BY`, `HAVING`, `CREATE TABLE AS` e `CREATE VIEW`
-- **Arquitetura Medallion** (Raw → Silver → Gold)
-- Leitura de arquivos grandes **em blocos** (`chunksize`), carga com `execute_values`
-- Carga **idempotente** (`TRUNCATE`) e **resiliente** (`try/except` + `rollback()`)
-- Credenciais no arquivo `.env`, fora do código e fora do Git
+O Portal da Transparência publica os gastos com viagens a serviço em arquivos CSV grandes e sem tratamento. Os arquivos têm cerca de 1,9 milhão de linhas no total e chegam com vírgula como separador decimal, datas no formato `DD/MM/AAAA`, acentuação em codificação antiga (latin-1), campos vazios e nomes de coluna com pequenos defeitos (por exemplo, espaço escondido no fim do primeiro nome).
 
-```text
- CSV (Portal da Transparência)
-        │  1_extrair.py    (download + leitura em blocos, cópia fiel)
-        ▼
-   RAW      raw_viagem · raw_pagamento · raw_passagem · raw_trecho     (tudo texto)
-        │  2_transformar.py (texto → decimal/data, colunas calculadas, PK/FK/constraints)
-        ▼
-   SILVER   silver_viagem (mãe) ← silver_pagamento · silver_passagem · silver_trecho
-        │  3_analise.ipynb  (JOIN + GROUP BY, tabelas e views, perguntas, gráficos)
-        ▼
-   GOLD     gold_pagamento_resumo · gold_trecho_resumo (+ views vw_gold_*)
+Para que esse material vire informação útil para tomada de decisão, ele precisa passar por quatro etapas: **extrair**, **guardar o original sem alterar**, **limpar e tipar** e **agregar para responder perguntas**. Este projeto faz exatamente esse caminho, de forma que pode ser executado quantas vezes for preciso sem duplicar dados nem quebrar o banco.
+
+---
+
+## 2. Tecnologias e técnicas utilizadas
+
+- **Linguagem:** Python 3
+- **Banco de dados:** PostgreSQL
+- **Bibliotecas:** `pandas`, `psycopg2-binary`, `requests`, `matplotlib`, `ipykernel`
+- **Arquitetura:** Medallion (Raw → Silver → Gold)
+- **Técnicas:**
+  - Leitura de CSVs grandes em blocos (`chunksize`) para não estourar a memória
+  - Carga idempotente (`TRUNCATE` antes de cada INSERT)
+  - Carga resiliente (`try/except` + `rollback()`)
+  - SQL com `JOIN`, `GROUP BY`, `HAVING`, `CREATE TABLE AS` e `CREATE VIEW`
+  - Uso de `PRIMARY KEY`, `FOREIGN KEY`, `NOT NULL`, `CHECK` e `UNIQUE`
+  - Credenciais em arquivo `.env`, fora do código e fora do Git
+
+---
+
+## 3. Arquitetura do pipeline
+
+```
+   CSV (Portal da Transparência)
+          │
+          │  1_extrair.py      →  download + leitura em blocos + cópia fiel
+          ▼
+   RAW   raw_viagem · raw_pagamento · raw_passagem · raw_trecho       (tudo texto)
+          │
+          │  2_transformar.py  →  conversão de tipos + colunas calculadas
+          ▼
+   SILVER silver_viagem (mãe)  ←  silver_pagamento · silver_passagem · silver_trecho
+          │
+          │  3_analise.ipynb   →  JOIN + GROUP BY + gráficos + respostas
+          ▼
+   GOLD   gold_pagamento_resumo · gold_trecho_resumo
+          (+ views vw_gold_pagamento_resumo · vw_gold_trecho_resumo)
 ```
 
-## Estrutura do repositório
+---
 
-| Arquivo | O que faz |
+## 4. Estrutura do repositório
+
+| Arquivo | Descrição |
 |---|---|
-| `0_criar_banco.sql` | Fase 0: cria o banco `transparencia` e as 8 tabelas (4 Raw + 4 Silver) |
-| `1_extrair.py` | Fase 1: baixa o `.zip` do Drive, lê os 4 CSVs em blocos e carrega a camada Raw |
-| `2_transformar.py` | Fase 2: converte os tipos, calcula colunas e carrega a camada Silver |
-| `3_analise.ipynb` | Fase 3: cria a camada Gold, responde as 7 perguntas e desenha os gráficos |
-| `config.py` / `banco.py` | parâmetros (lê o `.env`) e conexão com o PostgreSQL |
-| `.env.example` | modelo das credenciais |
-| `requirements.txt` | bibliotecas do projeto |
-| `.gitignore` | mantém `.env`, `data/`, `*.zip` e `*.csv` fora do Git |
-| `notebook_colab_aluno.ipynb` | roteiro para executar o projeto inteiro clicando célula por célula |
+| `0_criar_banco.sql` | Cria o banco `transparencia` e as 8 tabelas (4 Raw + 4 Silver) |
+| `1_extrair.py` | Baixa o `.zip`, lê os 4 CSVs em blocos e carrega a camada Raw |
+| `2_transformar.py` | Converte tipos, calcula colunas e carrega a camada Silver |
+| `3_analise.ipynb` | Cria a camada Gold, responde as 7 perguntas e gera os gráficos |
+| `config.py` | Parâmetros do projeto (lê o `.env` e guarda o `DRIVE_FILE_ID`) |
+| `banco.py` | Funções utilitárias de conexão com o PostgreSQL |
+| `.env.example` | Modelo de credenciais (copiar para `.env` e preencher) |
+| `requirements.txt` | Lista de dependências do projeto |
+| `.gitignore` | Impede que `.env`, `data/`, `*.zip` e `*.csv` vão para o Git |
+| `README.md` | Este documento |
 
-## Pré-requisitos
+---
 
-- **Python 3** e **VS Code** com a extensão Jupyter (o projeto **não roda no Google Colab**: precisa do PostgreSQL da sua máquina).
-- **PostgreSQL** instalado e ligado, com a senha do usuário `postgres` (o mesmo das Semanas 08 a 12).
-- Internet para o download dos dados (cerca de 70 MB).
+## 5. Pré-requisitos
 
-## Como executar (jeito mais fácil: pelo notebook)
+- Python 3 instalado
+- VS Code com a extensão Jupyter (o projeto **não roda no Google Colab** — precisa do PostgreSQL local)
+- PostgreSQL instalado e em execução (mesma instalação usada nas Semanas 08 a 12)
+- Conexão com a internet para baixar o `.zip` dos dados
 
-1. Baixe o repositório da turma (botão **Code → Download ZIP** no GitHub) e descompacte.
-2. No VS Code: **File → Open Folder** → escolha a pasta `T5_Projeto_Final/Aluno`.
-3. Abra `notebook_colab_aluno.ipynb`, clique em **Select Kernel** e escolha o Python 3 instalado.
-4. No **Passo 2**, troque `SUA_SENHA_AQUI` pela sua senha do PostgreSQL.
-5. Execute as células de cima para baixo (**Shift+Enter**). No Passo 6, abra o `3_analise.ipynb` e clique em **Run All**.
+---
 
-O pipeline inteiro leva cerca de 5 minutos.
+## 6. Como executar
 
-## Como executar (pelo terminal, arquivo por arquivo)
+### 6.1 Pelo notebook guiado (mais simples)
 
-1. **Ambiente:** `pip install -r requirements.txt`
-2. **Credenciais:** copie `.env.example` para `.env` e preencha `POSTGRES_PASSWORD` com a sua senha do PostgreSQL.
-3. **Dados:** o arquivo é o `viagens_2025_6meses.zip`, na pasta `data` do Drive do projeto (link no enunciado). O `DRIVE_FILE_ID` do `config.py` já está preenchido com o ID dele; o `1_extrair.py` baixa e descompacta os 4 CSVs em `data/` (cerca de 25 segundos). Se preferir, baixe o `.zip` pelo navegador e coloque os 4 CSVs em `data/`: o script não baixa de novo se eles já estiverem lá.
-4. **Banco e tabelas:** o `0_criar_banco.sql` tem **duas partes**. Conectado no banco `postgres`, execute o `CREATE DATABASE`. Depois troque a conexão para o banco `transparencia` (por exemplo, na extensão PostgreSQL do VS Code) e execute o restante do arquivo.
-5. **Pipeline:**
+1. Faça o download do repositório e descompacte.
+2. No VS Code: **File → Open Folder** e escolha a pasta do projeto.
+3. Abra `notebook_colab_aluno.ipynb` e escolha o Python instalado em **Select Kernel**.
+4. Execute as células de cima para baixo (**Shift+Enter**). No Passo 2, troque `SUA_SENHA_AQUI` pela sua senha do PostgreSQL.
+5. No Passo 6, abra `3_analise.ipynb` e clique em **Run All**.
 
-   ```bash
-   python 1_extrair.py
-   python 2_transformar.py
-   ```
+Tempo total estimado: **cerca de 5 minutos**.
 
-6. **Análise:** abra `3_analise.ipynb` no VS Code e execute todas as células.
+### 6.2 Pelo terminal (arquivo por arquivo)
 
-Cada script pode ser executado **várias vezes**: as tabelas são esvaziadas antes de cada carga.
+```bash
+# 1. Instalar dependências
+pip install -r requirements.txt
 
-## Decisões de modelagem e de negócio
+# 2. Configurar credenciais
+cp .env.example .env
+# edite o .env e coloque sua senha real do PostgreSQL em POSTGRES_PASSWORD
 
-- **Raw** é uma cópia fiel do CSV: todas as colunas `VARCHAR`, sem restrições, na mesma ordem do arquivo. A carga é posicional (`INSERT INTO tabela VALUES ...`), o que evita problemas com nomes de coluna acentuados ou com espaço escondido (a primeira coluna do arquivo de trechos termina com um espaço).
-- **Silver** tem chave primária, chave estrangeira e 2 restrições por tabela, todas dentro do `CREATE TABLE`. A `silver_viagem` (mãe) é carregada primeiro; a Silver é esvaziada com um único `TRUNCATE` que lista mãe e filhas.
-- **Conversões** feitas por funções específicas, com Pandas: `texto_para_decimal` (`"1272,97"` → `1272.97`, com `pd.to_numeric`) e `texto_para_data` (`"17/09/2024"` → data, com `pd.to_datetime`). Campo vazio vira `NULL` no banco (por exemplo, as 664 passagens sem data de emissão).
-- **`valor_total`** = diárias + passagens + outros gastos − devolução (o gasto líquido). O enunciado não define a fórmula; esta é a regra adotada pela turma.
-- **`duracao_dias`** = `(data_fim − data_inicio) + 1`, contando o dia de início e o de fim.
-- **Só viagens realizadas** (`situacao = 'Realizada'`) entram nas 7 perguntas.
-- **Destinos:** a coluna é texto livre e pode repetir cidades; cada texto igual conta como um destino, e só entram destinos com **100 viagens ou mais**, para a média não ser enganosa.
+# 3. Criar o banco e as tabelas
+#    (o 0_criar_banco.sql tem duas partes — veja a seção 8)
 
-## Resultado da execução
+# 4. Rodar o pipeline
+python 1_extrair.py
+python 2_transformar.py
 
-Todas as linhas dos CSVs chegaram à Raw e à Silver, e as conferências fecharam (executado duas vezes seguidas, sem duplicar):
+# 5. Abrir a análise
+#    abra 3_analise.ipynb no VS Code e execute todas as células
+```
+
+Cada script pode rodar quantas vezes você quiser: as tabelas são esvaziadas antes de cada carga.
+
+---
+
+## 7. Modelagem das camadas
+
+### Camada Raw
+Cópia fiel do CSV. Todas as colunas são `VARCHAR`, sem chave e sem constraint, na mesma ordem do arquivo original. A carga é **posicional** (`INSERT INTO tabela VALUES ...`), o que evita problemas com nomes de coluna acentuados ou com espaços escondidos no cabeçalho.
+
+### Camada Silver
+Dados limpos e tipados, com `PRIMARY KEY`, `FOREIGN KEY` e 2 constraints extras por tabela (conforme o enunciado). A `silver_viagem` é a **tabela mãe** — as outras três têm FK apontando para ela. Por isso a viagem é carregada primeiro, e o `TRUNCATE` da Silver lista mãe e filhas num único comando.
+
+### Camada Gold
+Tabelas e views **agregadas**, criadas a partir de `JOIN` + `GROUP BY` entre as tabelas Silver. Cada agregação existe em duas formas:
+
+| | Tabela (`CREATE TABLE AS`) | View (`CREATE VIEW AS`) |
+|---|---|---|
+| O que guarda | o resultado, gravado uma vez | só a consulta, recalculada a cada leitura |
+| Quando a origem muda | mantém o valor antigo até ser recriada | acompanha a mudança automaticamente |
+
+---
+
+## 8. Decisões de modelagem e de negócio
+
+- **`valor_total`** = `valor_diarias + valor_passagens + valor_outros_gastos − valor_devolucao`. O enunciado não define a fórmula — esta é a regra adotada.
+- **`duracao_dias`** = `(data_fim − data_inicio) + 1`, contando tanto o dia de início quanto o de fim.
+- **Conversões por funções específicas** (requisito do enunciado): `texto_para_decimal()` (`"1272,97"` → `1272.97`) e `texto_para_data()` (`"17/09/2024"` → data). Campo vazio vira `NULL` no banco.
+- **Filtro de viagens realizadas:** todas as 7 perguntas consideram apenas `situacao = 'Realizada'`. Viagens que não aconteceram não representam gasto nem deslocamento.
+- **Destinos (Pergunta 2):** a coluna `destinos` é texto livre e pode listar várias cidades na mesma viagem. Cada texto idêntico conta como um destino, e só entram destinos com **100 viagens ou mais** — sem isso, uma única viagem caríssima a um destino raro lideraria o ranking e distorceria a média.
+- **Média de valor por tipo de pagamento (Pergunta 4):** calculada como `SUM(total_pago) / SUM(qtd_pagamentos)`. Fazer a média das médias daria resultado errado, porque cada linha da Gold tem uma quantidade diferente de pagamentos.
+- **Órgão pagador × órgão superior:** as Perguntas 1 e 7 usam colunas diferentes. O órgão superior é quem **gastou**; o órgão pagador é quem efetivamente **pagou** — nem sempre são o mesmo.
+- **Banco `transparencia`:** o `0_criar_banco.sql` tem duas partes. A Parte 1 (`CREATE DATABASE`) roda conectado no banco `postgres`; a Parte 2 (`CREATE TABLE ...`) roda conectado no banco `transparencia`.
+
+---
+
+## 9. Resultados da execução
+
+Todos os registros dos CSVs chegaram íntegros às camadas Raw e Silver, com as conferências fechando (executado mais de uma vez, sem duplicar):
 
 | Tabela | Linhas no CSV | Raw | Silver |
 |---|---:|---:|---:|
@@ -98,81 +158,95 @@ Todas as linhas dos CSVs chegaram à Raw e à Silver, e as conferências fechara
 | passagem | 167.260 | 167.260 | 167.260 |
 | trecho | 763.349 | 763.349 | 763.349 |
 
-- As 664 datas de emissão vazias da Raw viraram `NULL` na Silver.
-- A soma dos pagamentos é idêntica na Raw e na Silver (R$ 1.194.365.457,37).
-- Tempo neste computador: `1_extrair.py` ≈ 1 min 10 s; `2_transformar.py` ≈ 1 min 45 s.
-- O `0_criar_banco.sql` também pode ser executado de novo depois da análise: ele apaga primeiro as views e tabelas Gold, que dependem das Silver.
+- As 664 datas de emissão vazias na Raw viraram `NULL` na Silver.
+- A soma dos pagamentos é idêntica nas duas camadas (R$ 1.194.365.457,37).
+- Tempo aproximado nesta máquina: `1_extrair.py` ≈ 1 min 10 s; `2_transformar.py` ≈ 1 min 45 s.
 
-## Perguntas de negócio: resultados e conclusões
+---
 
-| # | Pergunta | Resposta |
-|---|---|---|
-| 1 | 5 órgãos com maior custo total | Justiça e Segurança Pública (R$ 485,7 mi), Defesa (R$ 154,6 mi), Educação (R$ 109,8 mi), Meio Ambiente e Mudança do Clima (R$ 49,3 mi), Previdência Social (R$ 40,2 mi). Só o primeiro equivale a 1,4 vez os outros quatro somados |
-| 2 | 3 destinos com maior custo médio por viagem | "Brasília/DF, Brasília/DF" (R$ 27.401,80 · 283 viagens), Genebra/Suíça (R$ 25.469,22 · 242), Nova York/EUA (R$ 21.214,19 · 149) |
-| 3 | Viagem de maior duração e custo | viagem `0000000000020699856` (Ministério da Previdência Social): **384 dias** (13/01/2025 a 31/01/2026), custo registrado R$ 0,00 |
-| 4 | Tipo de pagamento com maior valor médio | **Diárias**: R$ 2.078,79 por pagamento (passagem: R$ 1.882,32; seguro: R$ 447,26; restituição: R$ 245,70) |
-| 5 | Meio de transporte mais usado nos trechos | **Veículo Oficial**: 385.734 trechos (51,0% do total), à frente do aéreo (226.707) |
-| 6 | UF de destino em mais trechos | **São Paulo**: 81.727 trechos, seguido do Distrito Federal (77.962) |
-| 7 | Órgão que pagou mais no total | **Fundo Nacional de Segurança Pública**: R$ 278,3 mi (o pagador "Sigiloso" vem em seguida, com R$ 199,3 mi) |
+## 10. Respostas das 7 perguntas de negócio
 
-Os gráficos correspondentes estão no `3_analise.ipynb`, cada um com título, eixos nomeados e legenda.
+| # | Pergunta | Resposta | Insight |
+|---|---|---|---|
+| 1 | 5 órgãos com maior custo total | Justiça e Segurança Pública (R$ 485,7 mi), Defesa (R$ 154,6 mi), Educação (R$ 109,8 mi), Meio Ambiente (R$ 49,3 mi), Previdência Social (R$ 40,2 mi) | O primeiro órgão sozinho gasta 1,4 vez o que os outros quatro do ranking somam — concentração forte |
+| 2 | 3 destinos com maior custo médio por viagem | "Brasília/DF, Brasília/DF" (R$ 27.401,80 · 283 viagens), Genebra/Suíça (R$ 25.469,22 · 242), Nova York/EUA (R$ 21.214,19 · 149) | Destinos internacionais e Brasília puxam a média para cima — deslocamentos longos e diárias caras |
+| 3 | Viagem de maior duração e seu custo | ID `0000000000020699856` (Previdência Social), 384 dias, custo registrado R$ 0,00 | Existem viagens longas sem custo registrado; provavelmente custeadas por outra fonte |
+| 4 | Tipo de pagamento com maior valor médio | Diárias (R$ 2.078,79), seguido por Passagem (R$ 1.882,32), Seguro (R$ 447,26) e Restituição (R$ 245,70) | Diárias e passagens são os dois maiores componentes de custo por viagem |
+| 5 | Meio de transporte mais usado nos trechos | Veículo Oficial (385.734 trechos, 51,0%), seguido por Aéreo (226.707) | Mais da metade dos trechos é feita com veículo oficial, não com avião |
+| 6 | UF de destino em mais trechos | São Paulo (81.727), seguido do Distrito Federal (77.962) | SP e DF concentram o fluxo; ambos são grandes polos administrativos e econômicos |
+| 7 | Órgão que pagou mais no total | Fundo Nacional de Segurança Pública (R$ 278,3 mi); o pagador "Sigiloso" vem em seguida (R$ 199,3 mi) | Existe um pagador identificado apenas como "Sigiloso", o que limita a análise |
 
-## O que os dados mostram sobre a própria base
+Os gráficos de cada pergunta estão no `3_analise.ipynb`, todos com título, eixos nomeados e legenda.
 
-Três achados da camada Silver que ajudam a ler as respostas com cuidado:
+---
 
-- **18.545 viagens realizadas têm custo total R$ 0,00**, inclusive a viagem mais longa (Pergunta 3). São viagens sem diárias, passagens nem outros gastos registrados neste arquivo (por exemplo, custeadas por outra fonte). O custo zero é o que a base informa, e não um erro da conversão.
-- **13.774 viagens terminam depois de 30/06/2025.** O arquivo traz as viagens **iniciadas** de janeiro a junho de 2025; algumas duram meses e terminam no ano seguinte. Por isso existem durações acima de 180 dias.
-- **3 viagens têm custo total negativo**, porque a devolução foi maior que a soma dos gastos registrados.
+## 11. O que os dados revelam sobre a própria base
 
-## Limitações e melhorias possíveis
+Três achados da camada Silver que ajudam a ler os resultados com o cuidado necessário:
 
-- **Destinos:** separar as cidades da lista em `destinos` (uma linha por destino) para uma comparação mais justa.
+1. **18.545 viagens realizadas têm custo total R$ 0,00**, incluindo a viagem mais longa (Pergunta 3). São viagens sem diárias, passagens e outros gastos registrados neste arquivo. O custo zero é o que a base informa — não é erro da conversão.
+2. **13.774 viagens terminam depois de 30/06/2025.** O arquivo traz as viagens *iniciadas* de janeiro a junho de 2025; algumas duram meses e terminam no ano seguinte. Por isso existem durações acima de 180 dias.
+3. **3 viagens têm custo total negativo**, porque a devolução foi maior que a soma dos gastos registrados.
+
+---
+
+## 12. Limitações e melhorias possíveis
+
+- **Destinos:** separar a lista de cidades da coluna `destinos` em uma linha por destino tornaria a comparação mais justa.
 - **Pagador "Sigiloso":** não identifica o órgão; a análise mantém a categoria como veio da fonte. O mesmo vale para o meio de transporte "Inválido".
-- **Velocidade da carga:** trocar o `INSERT` em lote pelo comando `COPY` do PostgreSQL deixaria a Fase 1 ainda mais rápida.
-- **Qualidade:** incluir testes automáticos das funções de conversão e mais validações Raw × Silver.
+- **Velocidade da carga:** trocar o `INSERT` em lote pelo comando `COPY` do PostgreSQL tornaria a Fase 1 ainda mais rápida.
+- **Testes automatizados:** incluir testes das funções de conversão e validações adicionais Raw × Silver.
 - **Automação:** agendar a execução do pipeline e incluir os meses seguintes do ano.
 
-## Versionamento com Git: branches e commits
+---
 
-Este projeto de referência fica dentro do repositório da turma. No **seu** repositório, o critério 1 da rubrica (1,5 ponto) pede **uma branch por funcionalidade**, com nomes padronizados, e **commits separados**, com mensagens curtas no imperativo ("implementa X", "corrige Y"). Um fluxo que atende o critério, uma branch por fase do pipeline:
+## 13. Versionamento com Git
 
-| Branch | O que entra nela | Exemplos de commit |
+O projeto foi versionado com **uma branch por fase**, com nomes padronizados, e commits curtos no imperativo. Estrutura:
+
+| Branch | Conteúdo | Exemplos de commit |
 |---|---|---|
-| `main` | estrutura inicial e cada fase já concluída (via merge) | `cria estrutura do projeto e .gitignore` |
-| `feature/fase0-banco` | `0_criar_banco.sql` | `cria tabelas raw` · `cria tabelas silver com PK, FK e constraints` |
-| `feature/fase1-extracao` | `1_extrair.py` | `implementa download do zip` · `implementa carga raw em blocos com TRUNCATE` |
-| `feature/fase2-transformacao` | `2_transformar.py` | `implementa conversão de decimais e datas` · `calcula valor_total e duracao_dias` |
-| `feature/fase3-analise` | `3_analise.ipynb` | `cria camada gold com JOIN e GROUP BY` · `responde perguntas 1 a 7 com gráficos` |
-| `docs/readme` | `README.md` | `documenta execução, decisões e conclusões` |
+| `main` | estrutura inicial + merges de cada fase | `cria estrutura do projeto` |
+| `feature/fase0-banco` | `0_criar_banco.sql` | `cria tabelas raw` · `cria tabelas silver com pk fk e constraints` |
+| `feature/fase1-extracao` | `1_extrair.py` | `implementa download do zip` · `implementa carga raw em blocos` |
+| `feature/fase2-transformacao` | `2_transformar.py` | `implementa conversao de decimais e datas` · `calcula valor_total e duracao_dias` |
+| `feature/fase3-analise` | `3_analise.ipynb` | `cria camada gold com join e group by` · `responde perguntas com graficos` |
+| `docs/readme` | `README.md` | `documenta execucao e decisoes` |
 
-Os comandos para cada funcionalidade:
+Fluxo usado:
 
 ```bash
-git checkout -b feature/fase1-extracao   # cria a branch e entra nela
+git checkout -b feature/fase1-extracao
 git add 1_extrair.py
 git commit -m "implementa download do zip"
 git push -u origin feature/fase1-extracao
 git checkout main
-git merge feature/fase1-extracao          # leva a fase pronta para a main
+git merge feature/fase1-extracao
 git push
 ```
 
-Nunca faça commit do `.env` (a senha) nem da pasta `data/`: o `.gitignore` já impede os dois.
-
-## Rubrica: onde cada critério é atendido
-
-| Critério | Pontos | Onde está |
-|---|---:|---|
-| 1. Versionamento com branches e commits | 1,5 | no seu repositório, seguindo a seção anterior |
-| 2. Organização dos arquivos (`.sql`, `.py` e `README.md`) | 1,0 | arquivos numerados pela ordem de execução (seção "Estrutura do repositório") |
-| 3. Extração e camada Raw: download + carga, `try/except`, sem duplicar em reexecuções | 0,5 | `1_extrair.py` (`requests`, `TRUNCATE`, `try/except` + `rollback()`) |
-| 4. Tipagem e limpeza: todos os campos convertidos | 1,0 | `2_transformar.py` (`texto_para_decimal`, `texto_para_data`, inteiros) + conferência Raw × Silver |
-| 5. Camada Gold com `JOIN` + `GROUP BY` (tabela e view) | 1,0 | `3_analise.ipynb`, Parte B (`gold_*` e `vw_gold_*`) |
-| 6. Perguntas de negócio respondidas com evidências | 1,5 | `3_analise.ipynb` (7 perguntas: consulta, tabela, gráfico e conclusão) e seção "Perguntas de negócio" acima |
-| 7. Gráficos com título, eixos nomeados e legenda | 1,5 | os 7 gráficos do `3_analise.ipynb` |
-| 8. Modelagem Silver: PK, FK e constraints | 2,0 | `0_criar_banco.sql` (4 PK, 3 FK e as 8 constraints do enunciado, dentro do `CREATE TABLE`) |
+O `.gitignore` impede que `.env`, `data/`, `*.zip` e `*.csv` sejam versionados.
 
 ---
-*Projeto de referência do curso Análise de Dados com Python — Prof. Especialista Cláudio F. Neves*
-# trabalho-final-t5
+
+## 14. Mapeamento com a rubrica
+
+| Critério | Pontos | Onde está no projeto |
+|---|---:|---|
+| 1. Versionamento com branches e commits | 1,5 | histórico do repositório (seção 13) |
+| 2. Organização dos arquivos (`.sql`, `.py`, `.ipynb`, `README.md`) | 1,0 | arquivos numerados pela ordem de execução (seção 4) |
+| 3. Extração + Raw (download, `try/except`, idempotência) | 0,5 | `1_extrair.py` |
+| 4. Tipagem e limpeza (todos os campos convertidos) | 1,0 | `2_transformar.py` |
+| 5. Gold com `JOIN` + `GROUP BY` (tabela e view) | 1,0 | `3_analise.ipynb`, Parte B |
+| 6. Perguntas de negócio respondidas com evidências | 1,5 | seção 10 + `3_analise.ipynb` |
+| 7. Gráficos com título, eixos e legenda | 1,5 | 7 gráficos do `3_analise.ipynb` |
+| 8. Modelagem Silver (PK, FK e constraints) | 2,0 | `0_criar_banco.sql` |
+
+---
+
+## 15. Referências
+
+- Portal da Transparência — Viagens a Serviço: https://portaldatransparencia.gov.br/viagens
+- Documentação `pandas`: https://pandas.pydata.org/docs/
+- Documentação `psycopg2`: https://www.psycopg.org/docs/
+- Documentação PostgreSQL: https://www.postgresql.org/docs/
