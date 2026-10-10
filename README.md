@@ -3,8 +3,8 @@
 Projeto do Módulo 1 (Semana 13) do curso **Análise de Dados com Python — SENAI / LAB365**.
 Um pipeline completo em **Python + PostgreSQL** que baixa dados abertos de *Viagens a Serviço* do Governo Federal, preserva o dado bruto, limpa e tipa, agrega e responde perguntas de negócio com tabelas e gráficos.
 
-Autor: {{ SEU NOME COMPLETO }}
-Repositório: {{ https://github.com/seu-usuario/seu-repo }}
+Autor: {{ Adriano da Conceição Santos }}
+Repositório: {{ https://github.com/soumadriano/trabalho-final-t5 }}
 
 ---
 
@@ -60,7 +60,7 @@ Para que esse material vire informação útil para tomada de decisão, ele prec
 | `0_criar_banco.sql` | Cria o banco `transparencia` e as 8 tabelas (4 Raw + 4 Silver) |
 | `1_extrair.py` | Baixa o `.zip`, lê os 4 CSVs em blocos e carrega a camada Raw |
 | `2_transformar.py` | Converte tipos, calcula colunas e carrega a camada Silver |
-| `3_analise.ipynb` | Cria a camada Gold, responde as 7 perguntas e gera os gráficos |
+| `3_analise.ipynb` | Cria a camada Gold, responde as **10 perguntas** (7 do enunciado + 3 extras) e gera os gráficos |
 | `config.py` | Parâmetros do projeto (lê o `.env` e guarda o `DRIVE_FILE_ID`) |
 | `banco.py` | Funções utilitárias de conexão com o PostgreSQL |
 | `.env.example` | Modelo de credenciais (copiar para `.env` e preencher) |
@@ -139,10 +139,13 @@ Tabelas e views **agregadas**, criadas a partir de `JOIN` + `GROUP BY` entre as 
 - **`valor_total`** = `valor_diarias + valor_passagens + valor_outros_gastos − valor_devolucao`. O enunciado não define a fórmula — esta é a regra adotada.
 - **`duracao_dias`** = `(data_fim − data_inicio) + 1`, contando tanto o dia de início quanto o de fim.
 - **Conversões por funções específicas** (requisito do enunciado): `texto_para_decimal()` (`"1272,97"` → `1272.97`) e `texto_para_data()` (`"17/09/2024"` → data). Campo vazio vira `NULL` no banco.
-- **Filtro de viagens realizadas:** todas as 7 perguntas consideram apenas `situacao = 'Realizada'`. Viagens que não aconteceram não representam gasto nem deslocamento.
+- **Filtro de viagens realizadas:** todas as perguntas consideram apenas `situacao = 'Realizada'`. Viagens que não aconteceram não representam gasto nem deslocamento.
 - **Destinos (Pergunta 2):** a coluna `destinos` é texto livre e pode listar várias cidades na mesma viagem. Cada texto idêntico conta como um destino, e só entram destinos com **100 viagens ou mais** — sem isso, uma única viagem caríssima a um destino raro lideraria o ranking e distorceria a média.
 - **Média de valor por tipo de pagamento (Pergunta 4):** calculada como `SUM(total_pago) / SUM(qtd_pagamentos)`. Fazer a média das médias daria resultado errado, porque cada linha da Gold tem uma quantidade diferente de pagamentos.
 - **Órgão pagador × órgão superior:** as Perguntas 1 e 7 usam colunas diferentes. O órgão superior é quem **gastou**; o órgão pagador é quem efetivamente **pagou** — nem sempre são o mesmo.
+- **Pergunta extra 1 (viajantes que mais viajaram):** os destinos são juntados com `STRING_AGG(DISTINCT destinos, ' | ')`. O `DISTINCT` evita repetir o mesmo texto e o `|` separa visualmente cada destino.
+- **Pergunta extra 2 (viajantes que mais gastaram):** a métrica é a soma de `valor_total` por pessoa, não a contagem de viagens — são métricas diferentes que podem ter rankings diferentes.
+- **Pergunta extra 3 (meses com mais viagens):** agrupamento por mês usa `TO_CHAR(data_inicio, 'YYYY-MM')`, que transforma a data no texto `2025-01`, `2025-02`, etc., permitindo agrupar sem perder o ano.
 - **Banco `transparencia`:** o `0_criar_banco.sql` tem duas partes. A Parte 1 (`CREATE DATABASE`) roda conectado no banco `postgres`; a Parte 2 (`CREATE TABLE ...`) roda conectado no banco `transparencia`.
 
 ---
@@ -164,7 +167,9 @@ Todos os registros dos CSVs chegaram íntegros às camadas Raw e Silver, com as 
 
 ---
 
-## 10. Respostas das 7 perguntas de negócio
+## 10. Respostas das perguntas de negócio
+
+### 10.1 Perguntas do enunciado (7)
 
 | # | Pergunta | Resposta | Insight |
 |---|---|---|---|
@@ -176,7 +181,17 @@ Todos os registros dos CSVs chegaram íntegros às camadas Raw e Silver, com as 
 | 6 | UF de destino em mais trechos | São Paulo (81.727), seguido do Distrito Federal (77.962) | SP e DF concentram o fluxo; ambos são grandes polos administrativos e econômicos |
 | 7 | Órgão que pagou mais no total | Fundo Nacional de Segurança Pública (R$ 278,3 mi); o pagador "Sigiloso" vem em seguida (R$ 199,3 mi) | Existe um pagador identificado apenas como "Sigiloso", o que limita a análise |
 
-Os gráficos de cada pergunta estão no `3_analise.ipynb`, todos com título, eixos nomeados e legenda.
+### 10.2 Perguntas extras (3)
+
+| # | Pergunta | Resposta | Insight |
+|---|---|---|---|
+| 8 | 10 viajantes que mais viajaram e seus destinos | {{ preencher com o resultado da sua execução }} | Mostra o perfil dos servidores com maior volume de deslocamentos — alguns concentram dezenas de viagens em seis meses |
+| 9 | 10 viajantes que mais gastaram dinheiro | {{ preencher com o resultado da sua execução }} | Ranking por custo total, não por quantidade: uma pessoa com poucas viagens caras pode gastar mais do que outra com muitas viagens baratas |
+| 10 | 5 meses com mais viagens iniciadas | {{ preencher com o resultado da sua execução }} | Ajuda a enxergar sazonalidade dentro dos seis meses do dataset — se todos os meses tiverem volume parecido, não há concentração temporal |
+
+> **Como preencher as linhas 8, 9 e 10:** rode as três células extras no `3_analise.ipynb` e copie a primeira linha de cada tabela (que aparece depois do gráfico). Também vale substituir o `{{ ... }}` do Insight por uma frase curta sua, olhando o gráfico.
+
+Os gráficos de todas as 10 perguntas estão no `3_analise.ipynb`, todos com título, eixos nomeados e legenda.
 
 ---
 
@@ -197,6 +212,7 @@ Três achados da camada Silver que ajudam a ler os resultados com o cuidado nece
 - **Velocidade da carga:** trocar o `INSERT` em lote pelo comando `COPY` do PostgreSQL tornaria a Fase 1 ainda mais rápida.
 - **Testes automatizados:** incluir testes das funções de conversão e validações adicionais Raw × Silver.
 - **Automação:** agendar a execução do pipeline e incluir os meses seguintes do ano.
+- **Análises extras possíveis:** custo médio por cargo, sazonalidade diária (dia da semana), distribuição de viagens urgentes por órgão, viagens mais longas em número de trechos.
 
 ---
 
@@ -210,7 +226,7 @@ O projeto foi versionado com **uma branch por fase**, com nomes padronizados, e 
 | `feature/fase0-banco` | `0_criar_banco.sql` | `cria tabelas raw` · `cria tabelas silver com pk fk e constraints` |
 | `feature/fase1-extracao` | `1_extrair.py` | `implementa download do zip` · `implementa carga raw em blocos` |
 | `feature/fase2-transformacao` | `2_transformar.py` | `implementa conversao de decimais e datas` · `calcula valor_total e duracao_dias` |
-| `feature/fase3-analise` | `3_analise.ipynb` | `cria camada gold com join e group by` · `responde perguntas com graficos` |
+| `feature/fase3-analise` | `3_analise.ipynb` | `cria camada gold com join e group by` · `responde perguntas com graficos` · `adiciona 3 perguntas extras` |
 | `docs/readme` | `README.md` | `documenta execucao e decisoes` |
 
 Fluxo usado:
@@ -238,8 +254,8 @@ O `.gitignore` impede que `.env`, `data/`, `*.zip` e `*.csv` sejam versionados.
 | 3. Extração + Raw (download, `try/except`, idempotência) | 0,5 | `1_extrair.py` |
 | 4. Tipagem e limpeza (todos os campos convertidos) | 1,0 | `2_transformar.py` |
 | 5. Gold com `JOIN` + `GROUP BY` (tabela e view) | 1,0 | `3_analise.ipynb`, Parte B |
-| 6. Perguntas de negócio respondidas com evidências | 1,5 | seção 10 + `3_analise.ipynb` |
-| 7. Gráficos com título, eixos e legenda | 1,5 | 7 gráficos do `3_analise.ipynb` |
+| 6. Perguntas de negócio respondidas com evidências | 1,5 | seção 10 + `3_analise.ipynb` (7 do enunciado + 3 extras) |
+| 7. Gráficos com título, eixos e legenda | 1,5 | 10 gráficos do `3_analise.ipynb` (7 + 3 extras) |
 | 8. Modelagem Silver (PK, FK e constraints) | 2,0 | `0_criar_banco.sql` |
 
 ---
