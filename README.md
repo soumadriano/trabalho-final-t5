@@ -3,8 +3,8 @@
 Projeto do Módulo 1 (Semana 13) do curso **Análise de Dados com Python — SENAI / LAB365**.
 Um pipeline completo em **Python + PostgreSQL** que baixa dados abertos de *Viagens a Serviço* do Governo Federal, preserva o dado bruto, limpa e tipa, agrega e responde perguntas de negócio com tabelas e gráficos.
 
-Autor: {{ Adriano da Conceição Santos }}
-Repositório: {{ https://github.com/soumadriano/trabalho-final-t5 }}
+Autor: Adriano da Conceição Santos
+Repositório: https://github.com/soumadriano/trabalho-final-t5
 
 ---
 
